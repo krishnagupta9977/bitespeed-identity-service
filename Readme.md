@@ -1,33 +1,72 @@
-A robust Node.js service designed to identify and link multiple contact records belonging to the same customer. This ensures a "Single Source of Truth" even when customers provide varying contact details across different orders.
+Bitespeed Identity Reconciliation Service:
 
-## Tech StackRuntime: 
-Node.jsFramework: Express.jsDatabase: MongoDBObject Modeling: Mongoose
+A robust backend service designed to consolidate customer identities across multiple purchases. This service identifies whether different contact details (email or phone number) belong to the same person and links them to a single primary contact using an "Oldest Wins" reconciliation logic.
 
-## Data Model: 
-ContactEach contact entry in the MongoDB collection follows this 
-schema:FieldTypeDescription_idObjectIdAuto-generated unique identifier.emailStringCustomer's email address (Optional).phoneNumberStringCustomer's phone number (Optional).linkedIdObjectIdPoints to the _id of the Primary contact.linkPrecedenceStringEither "primary" or "secondary".createdAtDateTimestamp of record creation.updatedAtDateTimestamp of last modification.deletedAtDateTimestamp for soft deletion.
+🚀 Live Deployment
+API Endpoint: https://bitespeed-identity-service-d0yj.onrender.com/identify
 
-## API SpecificationEndpoint:
- POST /identifyConsolidates contact information based on provided credentials.Request Body:JSON{
-  "email": "example@test.com",
-  "phoneNumber": "1234567890"
+🛠️ Tech Stack
+Runtime: Node.js (v22.14.0)
+
+Framework: Express.js
+
+Database: PostgreSQL (Hosted on Render/External Instance)
+
+ORM: Sequelize
+
+Deployment: Render
+
+✨ Features
+Identity Linking: Automatically links contacts if either the email or phone number matches an existing record.
+
+Primary/Secondary Hierarchy: Ensures the oldest record remains "Primary" while newer ones are marked "Secondary".
+
+Cluster Merging: If a request contains information that links two previously separate primary clusters, the newer primary is demoted to secondary.
+
+Unified Response: Returns a consolidated object containing all linked emails, phone numbers, and secondary IDs.
+
+
+📖 API Documentation
+Identify Contact
+Method: POST
+
+Path: /identify
+
+Request Body:
+
+JSON
+{
+  "email": "mcfly@hillvalley.edu",
+  "phoneNumber": "123456"
 }
+Successful Response (200 OK):
 
-## Validation: 
-At least one field (email or phoneNumber) must be present.Response Format (200 OK):JSON{
+JSON
+{
   "contact": {
-    "primaryContactId": "string",
-    "emails": ["string"],
-    "phoneNumbers": ["string"],
-    "secondaryContactIds": ["string"]
+    "primaryContactId": 1,
+    "emails": ["lorraine@hillvalley.edu", "mcfly@hillvalley.edu"],
+    "phoneNumbers": ["123456"],
+    "secondaryContactIds": [2]
   }
 }
+⚙️ Local Setup
+Clone the repository:
 
-## Controller Logic & Workflow
-1. Request HandlingExtracts email and phoneNumber.Returns 400 Bad Request if both fields are null.
-2. Search & MatchQueries the database for any record matching the provided email OR phoneNumber.If no match exists: Creates a new Primary contact.If match exists: Aggregates all related contacts (including those linked via linkedId) into a unique set.
-3. Primary Selection & MergingThe "Oldest Wins" Rule: All gathered contacts are sorted by createdAt.The oldest record is identified as the True Primary.Any other records previously marked as "primary" are demoted to Secondary, and their linkedId is updated to point to the True Primary.
-4. ExpansionIf the incoming request contains a new email or phone number not currently in the contact group, a new Secondary record is created and linked to the True Primary.
-5. Final Response ConstructionCollects all unique emails (Primary first).Collects all unique phone numbers (Primary first).Lists all associated Secondary IDs.
-💡
- Edge Cases HandledCaseSystem ActionNew CustomerCreates a new Primary record.Existing CustomerReturns the current consolidated group.New MetadataIf a known customer uses a new email, a Secondary record is added.Primary CollisionIf two different Primary clusters are linked by a new order, the newer cluster is merged into the older one.ConsistencyThe oldest record always remains the anchor for the identity.
+Bash
+git clone https://github.com/YOUR_USERNAME/bitespeed-identity-service.git
+cd bitespeed-identity-service
+Install dependencies:
+
+Bash
+npm install
+Environment Variables:
+Create a .env file in the root directory and add your PostgreSQL URI:
+
+Code snippet
+DATABASE_URL=your_postgresql_connection_string
+PORT=5000
+Run the server:
+
+Bash
+npm run dev
